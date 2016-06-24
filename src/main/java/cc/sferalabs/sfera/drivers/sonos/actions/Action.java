@@ -3,6 +3,13 @@ package cc.sferalabs.sfera.drivers.sonos.actions;
 import java.util.Map;
 import java.util.Map.Entry;
 
+/**
+ *
+ * @author Giampiero Baggiani
+ *
+ * @version 1.0.0
+ *
+ */
 public class Action {
 
 	private final String action;
@@ -13,12 +20,15 @@ public class Action {
 	/**
 	 * 
 	 * @param action
+	 *            the action
 	 * @param endpoint
+	 *            the endpoint
 	 * @param service
+	 *            the uPnP service name
 	 * @param parameters
+	 *            the parameters
 	 */
-	public Action(String action, String endpoint, String service,
-			String parameters) {
+	public Action(String action, String endpoint, String service, String parameters) {
 		this.action = action;
 		this.endpoint = endpoint;
 		this.service = service;
@@ -28,12 +38,15 @@ public class Action {
 	/**
 	 * 
 	 * @param action
+	 *            the action
 	 * @param endpoint
+	 *            the endpoint
 	 * @param service
+	 *            the uPnP service name
 	 * @param parameters
+	 *            the parameters map
 	 */
-	public Action(String action, String endpoint, String service,
-			Map<String, String> parameters) {
+	public Action(String action, String endpoint, String service, Map<String, String> parameters) {
 		this(action, endpoint, service, paramsMapToString(parameters));
 	}
 
@@ -54,7 +67,7 @@ public class Action {
 
 	/**
 	 * 
-	 * @return
+	 * @return the action
 	 */
 	public String getAction() {
 		return this.action;
@@ -62,7 +75,7 @@ public class Action {
 
 	/**
 	 * 
-	 * @return
+	 * @return the endpoint name
 	 */
 	public String getEndpoint() {
 		return this.endpoint;
@@ -70,7 +83,7 @@ public class Action {
 
 	/**
 	 * 
-	 * @return
+	 * @return the uPnP service name
 	 */
 	public String getService() {
 		return this.service;
@@ -78,7 +91,7 @@ public class Action {
 
 	/**
 	 * 
-	 * @return
+	 * @return the parameters
 	 */
 	public String getParameters() {
 		return this.parameters;

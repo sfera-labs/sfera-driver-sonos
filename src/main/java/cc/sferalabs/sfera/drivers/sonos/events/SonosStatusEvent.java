@@ -3,6 +3,13 @@ package cc.sferalabs.sfera.drivers.sonos.events;
 import cc.sferalabs.sfera.events.Node;
 import cc.sferalabs.sfera.events.StringEvent;
 
+/**
+ *
+ * @author Giampiero Baggiani
+ *
+ * @version 1.0.0
+ *
+ */
 public class SonosStatusEvent extends StringEvent implements SonosEvent {
 
 	public SonosStatusEvent(Node source, String value) {

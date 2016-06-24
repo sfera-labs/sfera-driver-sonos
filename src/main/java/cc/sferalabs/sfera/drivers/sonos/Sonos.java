@@ -37,7 +37,6 @@ import cc.sferalabs.sfera.drivers.sonos.actions.Response;
 import cc.sferalabs.sfera.drivers.sonos.actions.SetAVTransportURIAction;
 import cc.sferalabs.sfera.drivers.sonos.actions.SetRelativeVolumeAction;
 import cc.sferalabs.sfera.drivers.sonos.actions.SetVolumeAction;
-import cc.sferalabs.sfera.drivers.sonos.events.SonosConnectedEvent;
 import cc.sferalabs.sfera.drivers.sonos.events.SonosMuteEvent;
 import cc.sferalabs.sfera.drivers.sonos.events.SonosStateEvent;
 import cc.sferalabs.sfera.drivers.sonos.events.SonosStatusEvent;
@@ -45,6 +44,13 @@ import cc.sferalabs.sfera.drivers.sonos.events.SonosTrackEvent;
 import cc.sferalabs.sfera.drivers.sonos.events.SonosVolumeEvent;
 import cc.sferalabs.sfera.events.Bus;
 
+/**
+ *
+ * @author Giampiero Baggiani
+ *
+ * @version 1.0.0
+ *
+ */
 public class Sonos extends Driver {
 
 	private static final String BROADCAST_ADDR = "239.255.255.250";
@@ -68,15 +74,10 @@ public class Sonos extends Driver {
 
 	String localHost;
 	private String baseUrl;
-	private String roomName;
 	private long lastSubscribe;
 	private ServerSocket eventsSocket;
 	private Map<String, String> subscriptionSids;
 
-	/**
-	 * 
-	 * @param id
-	 */
 	public Sonos(String id) {
 		super(id);
 	}
@@ -102,12 +103,12 @@ public class Sonos extends Driver {
 			log.info("Looking for device '{}'", room);
 		}
 		try {
-			discover(room);
+			room = discover(room);
 		} catch (IOException e) {
 			log.error("Discovery error", e);
 			return false;
 		}
-		log.info("Connected to: {} ({})", roomName, baseUrl);
+		log.info("Connected to: {} ({})", room, baseUrl);
 		try {
 			getState();
 		} catch (Exception e) {
@@ -122,7 +123,6 @@ public class Sonos extends Driver {
 			return false;
 		}
 		subscriptionSids = new HashMap<>();
-		Bus.postIfChanged(new SonosConnectedEvent(this, true));
 		return true;
 	}
 
@@ -196,9 +196,10 @@ public class Sonos extends Driver {
 	/**
 	 * 
 	 * @param roomName
+	 * @return
 	 * @throws IOException
 	 */
-	private void discover(String roomName) throws IOException {
+	private String discover(String roomName) throws IOException {
 		try (DatagramSocket sock = new DatagramSocket()) {
 			byte[] bytes = DISCOVER_MESSAGE.getBytes(StandardCharsets.UTF_8);
 			DatagramPacket discoverPacket = new DatagramPacket(bytes, bytes.length);
@@ -220,9 +221,8 @@ public class Sonos extends Driver {
 					String name = getRoomName(location);
 					log.debug("Name: {}", name);
 					if (name != null && (roomName == null || roomName.equalsIgnoreCase(name))) {
-						this.roomName = name;
 						this.baseUrl = location.substring(0, location.indexOf('/', 8));
-						return;
+						return name;
 					}
 				}
 			}
@@ -461,7 +461,6 @@ public class Sonos extends Driver {
 
 	@Override
 	protected void onQuit() {
-		Bus.postIfChanged(new SonosConnectedEvent(this, false));
 		baseUrl = null;
 		lastSubscribe = 0;
 		if (eventsSocket != null) {
@@ -473,11 +472,15 @@ public class Sonos extends Driver {
 	}
 
 	/**
+	 * Sends the specified action request.
 	 * 
 	 * @param action
+	 *            the action to send (refer to protocol)
 	 * @param service
+	 *            the uPnP service to address the request to
 	 * @param parameters
-	 * @return
+	 *            map of the parameters (name-value) to send with the request
+	 * @return the received {@link Response}
 	 */
 	public Response action(String action, String service, Map<String, String> parameters) {
 		String endpoint = "/MediaRenderer/" + service + "/Control";
@@ -490,27 +493,37 @@ public class Sonos extends Driver {
 	}
 
 	/**
+	 * Sends a "play" command request.
 	 * 
-	 * @return
+	 * @return {@code true} if the request is successful, {@code false}
+	 *         otherwise
 	 */
 	public boolean play() {
 		return send(AVTransportAction.PLAY);
 	}
 
 	/**
+	 * Sends a request to play the the resource at the specified URI.
 	 * 
 	 * @param uri
-	 * @return
+	 *            the URI of the resource to play
+	 * @return {@code true} if the request is successful, {@code false}
+	 *         otherwise
 	 */
 	public boolean play(String uri) {
 		return play(uri, "");
 	}
 
 	/**
+	 * Sends a request to play the the resource at the specified URI with the
+	 * specified meta-data.
 	 * 
 	 * @param uri
+	 *            the URI of the resource to play
 	 * @param metadata
-	 * @return
+	 *            the meta-data
+	 * @return {@code true} if the request is successful, {@code false}
+	 *         otherwise
 	 */
 	public boolean play(String uri, String metadata) {
 		boolean ok = send(new SetAVTransportURIAction(uri, metadata));
@@ -521,59 +534,77 @@ public class Sonos extends Driver {
 	}
 
 	/**
+	 * Sends a "pause" command request.
 	 * 
-	 * @return
+	 * @return {@code true} if the request is successful, {@code false}
+	 *         otherwise
 	 */
 	public boolean pause() {
 		return send(AVTransportAction.PAUSE);
 	}
 
 	/**
+	 * Sends a "stop" command request.
 	 * 
-	 * @return
+	 * @return {@code true} if the request is successful, {@code false}
+	 *         otherwise
 	 */
 	public boolean stop() {
 		return send(AVTransportAction.STOP);
 	}
 
 	/**
+	 * Sends a "next-track" command request.
 	 * 
-	 * @return
+	 * @return {@code true} if the request is successful, {@code false}
+	 *         otherwise
 	 */
 	public boolean next() {
 		return send(AVTransportAction.NEXT);
 	}
 
 	/**
+	 * Sends a "previous-track" command request.
 	 * 
-	 * @return
+	 * @return {@code true} if the request is successful, {@code false}
+	 *         otherwise
 	 */
 	public boolean previous() {
 		return send(AVTransportAction.PREVIOUS);
 	}
 
 	/**
+	 * Sends a request to set the volume to the specified value.
 	 * 
 	 * @param val
-	 * @return
+	 *            the volume level (0 ... 100)
+	 * @return {@code true} if the request is successful, {@code false}
+	 *         otherwise
 	 */
 	public boolean setVolume(int val) {
 		return send(new SetVolumeAction(val));
 	}
 
 	/**
+	 * Sends a request to adjust the volume adding the specified value to the
+	 * current level.
 	 * 
 	 * @param val
-	 * @return
+	 *            the volume adjustment (-100 ... 100)
+	 * @return {@code true} if the request is successful, {@code false}
+	 *         otherwise
 	 */
 	public boolean setRelativeVolume(int val) {
 		return send(new SetRelativeVolumeAction(val));
 	}
 
 	/**
+	 * Sends a request to mute or un-mute the audio.
 	 * 
 	 * @param val
-	 * @return
+	 *            {@code true} to mute, {@code false} to un-mute
+	 * @return {@code true} if the request is successful, {@code false}
+	 *         otherwise
 	 */
 	public boolean setMute(boolean val) {
 		Action a = val ? RenderingControlAction.SET_MUTE_TRUE
@@ -582,31 +613,49 @@ public class Sonos extends Driver {
 	}
 
 	/**
+	 * Sends a request to add the resource at the specified URI to the playing
+	 * queue.
 	 * 
 	 * @param uri
+	 *            the URI of the resource to enqueue
 	 * @param metadata
+	 *            the meta-data to send
 	 * @param trackNumber
+	 *            the track number where to enqueue the resource, set 0 to add
+	 *            at the end
 	 * @param asNext
-	 * @return
+	 *            if {@code true} requests to play as next in the queue
+	 * @return {@code true} if the request is successful, {@code false}
+	 *         otherwise
 	 */
 	public boolean addToQueue(String uri, String metadata, int trackNumber, boolean asNext) {
 		return send(new AddURIToQueueAction(uri, metadata, trackNumber, asNext));
 	}
 
 	/**
+	 * Sends a request to add the resource at the specified URI to the playing
+	 * queue.
 	 * 
 	 * @param uri
+	 *            the URI of the resource to enqueue
 	 * @param trackNumber
-	 * @return
+	 *            the track number where to enqueue the resource, set 0 to add
+	 *            at the end
+	 * @return {@code true} if the request is successful, {@code false}
+	 *         otherwise
 	 */
 	public boolean addToQueue(String uri, int trackNumber) {
 		return addToQueue(uri, "", trackNumber, false);
 	}
 
 	/**
+	 * Sends a request to add the resource at the specified URI at the end of
+	 * the playing queue.
 	 * 
 	 * @param uri
-	 * @return
+	 *            the URI of the resource to enqueue
+	 * @return {@code true} if the request is successful, {@code false}
+	 *         otherwise
 	 */
 	public boolean addToQueue(String uri) {
 		return addToQueue(uri, 0);
